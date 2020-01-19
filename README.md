@@ -1,0 +1,2 @@
+# tamagoGame
+Tamagotchi game 
