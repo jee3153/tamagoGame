@@ -1,3 +1,4 @@
+import { textSpanIntersectsWithTextSpan } from 'typescript'
 
 export default class MainScene extends Phaser.Scene {
 
@@ -14,7 +15,7 @@ export default class MainScene extends Phaser.Scene {
       hunger: 70,
       fun: 70,
       hygine: 70,
-      affection: 0,
+      affection: 1,
       health: 50
     }
 
@@ -72,16 +73,32 @@ export default class MainScene extends Phaser.Scene {
 
     this.backToDefault()
 
+
     // decay of stats over time
     this.timedEventStats = this.time.addEvent({
       delay: 1000,
       repeat: -1,
       callback: () => {
-        // update stats
-        this.updateStat(this.decayRates)
+        if (this.selectedItem === this.sleep) {
+          return
+        } else {
+          // update stats
+          this.updateStat(this.decayRates)
+        }
+
       },
       callbackScope: this
     })
+
+    this.toToddler = this.time.addEvent({
+      delay: 30000,
+      repeat: 0,
+      callback: () => {
+        this.stage = 'hanpen'
+      },
+      callbackScope: this
+    })
+
 
   }
 
@@ -266,29 +283,46 @@ export default class MainScene extends Phaser.Scene {
     this.hungerBar = this.add.graphics()
     this.hungerBar.lineStyle(3, 0x000000, 1)
     this.hungerBar.strokeRect(138, margin, bar.width, bar.height)
-    this.hungerBar = this.add.rectangle(200, 30, this.percentagePresent(this.stats.hunger), 30, 0xFF2D00)
+    this.hungerBar = this.add.rectangle(140, 52, this.percentagePresent(this.stats.hunger), 26, 0xFF2D00)
 
     this.hygineBar = this.add.graphics()
     this.hygineBar.lineStyle(3, 0x000000, 1)
     this.hygineBar.strokeRect(388, margin, bar.width, bar.height)
+    this.hygineBar = this.add.rectangle(390, 52, this.percentagePresent(this.stats.hygine), 26, 0xFF2D00)
 
     this.funBar = this.add.graphics()
     this.funBar.lineStyle(3, 0x000000, 1)
     this.funBar.strokeRect(638, margin, bar.width, bar.height)
+    this.funBar = this.add.rectangle(640, 52, this.percentagePresent(this.stats.fun), 26, 0xFF2D00)
 
     this.affectionBar = this.add.graphics()
     this.affectionBar.lineStyle(3, 0x000000, 1)
     this.affectionBar.strokeRect(888, margin, bar.width, bar.height)
-
-
+    this.affectionBar = this.add.rectangle(890, 52, this.percentagePresent(this.stats.affection), 26, 0xeb3458)
   }
 
   refreshHUD() {
+    const greenOrRed = (stat) => stat >= 40 ? 65280 : 16723200
+    const pink = this.stats.affection <= 50 ? 16361168 : 15414360
+
     this.hungerBar.setOrigin(0, 0)
     this.hungerBar.displayWidth = this.percentagePresent(this.stats.hunger)
-    this.hungerBar.fillColor = this.stats.hunger >= 40 ? 65280 : 16723200
+    this.hungerBar.fillColor = greenOrRed(this.stats.hunger)
 
-    console.log(this.hungerBar)
+    this.hygineBar.setOrigin(0, 0)
+    this.hygineBar.displayWidth = this.percentagePresent(this.stats.hygine)
+    this.hygineBar.fillColor = greenOrRed(this.stats.hygine)
+
+    this.funBar.setOrigin(0, 0)
+    this.funBar.displayWidth = this.percentagePresent(this.stats.fun)
+    this.funBar.fillColor = greenOrRed(this.stats.fun)
+
+    this.affectionBar.setOrigin(0, 0)
+    this.affectionBar.displayWidth = this.percentagePresent(this.stats.affection)
+    this.affectionBar.fillColor = pink
+
+    // console.log(this.affectionBar)
+    // console.log(this.hungerBar)
     // const conditionalColorBar = (stat) => {
     //   return stat >= 50 ? '0x00ff00' : '0xFF2D00'
     // }
