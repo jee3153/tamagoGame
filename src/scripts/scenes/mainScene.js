@@ -1,5 +1,3 @@
-import { textSpanIntersectsWithTextSpan } from 'typescript'
-
 export default class MainScene extends Phaser.Scene {
 
   constructor() {
@@ -8,7 +6,10 @@ export default class MainScene extends Phaser.Scene {
 
   init() {
     // grown stage 
-    this.stage = 'tamago'
+    this.stage = {
+      baby: 'tamago',
+      toddler: 'hanpen'
+    }
 
     // stats
     this.stats = {
@@ -21,15 +22,19 @@ export default class MainScene extends Phaser.Scene {
 
     // stat rate
     this.statRate = {
-      feed: { hunger: 20 },
+      feed: { hunger: 20, health: 5 },
       snack: { hunger: 10, fun: 10 },
       play: { fun: 20 },
+      shower: { hygine: 100, health: 5 },
       hostpital: { health: 50 }
     }
 
+    // initialise currentstage
+    this.currentStage = this.stage.baby
+
     // max stat
     this.maxStat = 100
-    this.affectionMaxStat = this.stage === 'tamago' ? 50 : 100
+    this.affectionMaxStat = this.currentStage === this.stage.baby ? 50 : 100
 
     // decay parameters
     this.decayRates = {
@@ -39,9 +44,14 @@ export default class MainScene extends Phaser.Scene {
       affection: -2,
       health: -2
     }
+
+    // sickness condition 
+    // this.isSick = this.stats.health <= 20
+    // console.log(this.isSick)
   }
 
   preload() {
+
     // load images
     this.load.image('affection', 'assets/img/affection.png')
     this.load.image('shower', 'assets/img/shower.png')
@@ -51,28 +61,22 @@ export default class MainScene extends Phaser.Scene {
     this.load.image('sleep', 'assets/img/sleep.png')
     this.load.image('play', 'assets/img/play.png')
 
+    // load animation
+    this.animations('tamago')
+    this.animations('hanpen')
   }
 
   create() {
     const canvasWidth = this.game.canvas.width
     const canvasHeight = this.game.canvas.height
-    console.log(canvasWidth)
 
-    this.tamago = this.add.sprite(canvasWidth / 2, canvasHeight / 2, 'tamago', 'assets/img/tamago.png')
-    this.tamago.setScale(2)
+    this.pet = this.add.sprite(canvasWidth / 2, canvasHeight / 2, 'pets', `assets/img/${this.currentStage}00.png`).setScale(2).setInteractive()
+    this.pet.play(`${this.currentStage}-moving`)
+    console.log(this.pet)
 
     this.statbarMaker()
     this.refreshHUD()
-
     this.interface(canvasWidth, canvasHeight - 50)
-
-    this.tamago.play('moving')
-
-    // is tamago sick?
-    this.isSick = false
-
-    this.backToDefault()
-
 
     // decay of stats over time
     this.timedEventStats = this.time.addEvent({
@@ -84,21 +88,43 @@ export default class MainScene extends Phaser.Scene {
         } else {
           // update stats
           this.updateStat(this.decayRates)
+
+          if (this.stats.health <= 20) {
+            this.sick()
+          }
         }
 
       },
       callbackScope: this
     })
 
+    // growing to toddler
     this.toToddler = this.time.addEvent({
-      delay: 30000,
+      delay: 3000,
       repeat: 0,
       callback: () => {
-        this.stage = 'hanpen'
+        this.currentStage = this.stage.toddler
+        this.pet.setFrame('hanpen00.png')
+        this.pet.play(`${this.currentStage}-moving`)
+
+        console.log('tamago grown to hanpen!')
       },
       callbackScope: this
     })
 
+
+    console.log(`global ${this.pet}`)
+
+    // on Animation completion
+    this.pet.on('animationcomplete', () => {
+      this.backToDefault()
+      console.log('animation completed!')
+      // this.shutDownCheck()
+
+      // ui ready for next animation
+      this.uiReady()
+      console.log(this.currentStage)
+    }, this)
 
   }
 
@@ -108,27 +134,33 @@ export default class MainScene extends Phaser.Scene {
     // add icons on interface
     this.shower = this.add.sprite((screenW - margin) / 6, screenH, 'shower')
       .setScale(1.5).setInteractive()
-    this.shower.customStats = { hygine: 100 }
+    this.shower.customStats = this.statRate.shower
 
     this.feed = this.add.sprite((screenW - margin) / 6 * 2, screenH, 'feed')
       .setScale(1.5).setInteractive()
-    this.feed.customStats = { hunger: 20 }
+    this.feed.customStats = this.statRate.feed
 
     this.snack = this.add.sprite((screenW - margin) / 6 * 3, screenH, 'snack')
       .setScale(1.5).setInteractive()
-    this.snack.customStats = { hunger: 10, fun: 10, health: -10 }
+    this.snack.customStats = this.statRate.snack
 
     this.play = this.add.sprite((screenW - margin) / 6 * 4, screenH, 'play')
       .setScale(1.5).setInteractive()
-    this.play.customStats = { fun: 20 }
+    this.play.customStats = this.statRate.play
 
     this.sleep = this.add.sprite((screenW - margin) / 6 * 5, screenH, 'sleep')
       .setScale(1.5).setInteractive()
-    this.sleep.customStats = { fun: 20 }
 
     this.hospital = this.add.sprite((screenW - margin), screenH, 'hospital')
       .setScale(1.5).setInteractive()
-    this.hospital.customStats = { affection: -30, health: 60 }
+    this.hospital.customStats = this.statRate.hospital
+
+
+    //disable hospital interaction initially
+    this.hospital.disableInteractive()
+
+    // all icons in an array
+    this.buttons = [this.shower, this.feed, this.snack, this.play, this.sleep, this.hospital]
 
     // ui unblock
     this.uiBlocked = false
@@ -136,16 +168,7 @@ export default class MainScene extends Phaser.Scene {
     // if tamago is sick 
     this.isSick = false
 
-    if (!this.uiBlocked) {
-      this.shower.on('pointerdown', this.pickItem)
-      this.feed.on('pointerdown', this.pickItem)
-      this.snack.on('pointerdown', this.pickItem)
-      this.play.on('pointerdown', this.pickItem)
-      this.sleep.on('pointerdown', this.pickItem)
-    }
-
-    // all icons in an array
-    this.buttons = [this.shower, this.feed, this.snack, this.play, this.sleep, this.hospital]
+    this.shutDownCheck()
 
     // refresh ui
     this.uiReady()
@@ -160,10 +183,10 @@ export default class MainScene extends Phaser.Scene {
 
     // select item
     this.scene.selectedItem = this
-    console.log(this.scene.selectedItem)
 
     this.scene.uiBlocked = true
 
+    const stage = this.scene.currentStage
 
     // adding stats up
     this.scene.updateStat(this.customStats)
@@ -171,29 +194,26 @@ export default class MainScene extends Phaser.Scene {
 
     switch (this.texture.key) {
       case 'shower':
-        this.scene.tamago.play('taking a shower')
+        this.scene.pet.play(`${stage}-taking a shower`)
         break
 
       case 'feed':
       case 'snack':
-        // this.scene.uiBlocked = true
-        this.scene.tamago.play('eating')
+        this.scene.pet.play(`${stage}-eating`)
         break
 
       case 'play':
-        // this.scene.uiBlocked = true
-        this.scene.tamago.play('playing')
+        this.scene.pet.play(`${stage}-playing`)
         break
 
       case 'sleep':
-        // this.scene.uiBlocked = true
-        this.scene.tamago.play('sleeping')
+        this.scene.pet.play(`${stage}-sleeping`)
         break
 
       case 'hospital':
-        // this.scene.uiBlocked = true
         this.isSick = false
-        this.scene.tamago.play('being healthy')
+        this.scene.pet.play(`${stage}-being healthy`)
+        this.disableInteractive()
         break
     }
 
@@ -201,19 +221,15 @@ export default class MainScene extends Phaser.Scene {
   }
 
   backToDefault() {
-    this.tamago.on('animationcomplete', () => {
-      // check if tamago can back to default healty state 
-      if (this.stats.health <= 10) {
-        this.sick()
+    // check if tamago can back to default healty state 
+    if (this.stats.health <= 20) {
+      this.sick()
 
-      } else if (this.stats.health > 10) {
-        // back to default movement
-        this.tamago.play('moving')
-      }
-
-      // ui ready for next animation
-      this.uiReady()
-    })
+    } else {
+      // back to default movement
+      this.pet.play(`${this.currentStage}-moving`)
+      console.log('back to default: current stage is' + this.currentStage)
+    }
   }
 
   updateStat(statDifference) {
@@ -241,16 +257,13 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // refresh HUD
+    console.log(`updated stat`)
     this.refreshHUD()
+    // this.backToDefault()
     // if (isGameOver) this.gameOver()
   }
 
   checkForAffection(stat) {
-    // if (stat.hunger >= 70 && stat.hygine >= 70 && stat.fun && !this.isSick) {
-    //   stat.affection += 10
-    // } else if (this.isSick) {
-    //   stat.affection += -30
-    // }
     stat.hunger >= 70 && stat.hygine >= 70 && stat.fun ? stat.affection += 10 : stat.affection += 0
   }
 
@@ -268,7 +281,6 @@ export default class MainScene extends Phaser.Scene {
       font: '24px',
       fill: '#000'
     }
-
 
     this.hungerText = this.add.text(200, 90, 'Hunger', textConfig)
     this.hygineText = this.add.text(450, 90, 'Hygine', textConfig)
@@ -321,56 +333,96 @@ export default class MainScene extends Phaser.Scene {
     this.affectionBar.displayWidth = this.percentagePresent(this.stats.affection)
     this.affectionBar.fillColor = pink
 
-    // console.log(this.affectionBar)
-    // console.log(this.hungerBar)
-    // const conditionalColorBar = (stat) => {
-    //   return stat >= 50 ? '0x00ff00' : '0xFF2D00'
-    // }
 
-    // const affectionBarColor = () => {
-    //   return this.stats.affection >= 25 ? '0xF9A6D0' : '0xF9A6D0'
-    // }
-    // this.hungerBar = this.add.graphics()
-    // this.hungerBar.fillStyle(conditionalColorBar(this.stats.hunger), 1)
-    // this.hungerBar.fillRect(140, 52, this.percentagePresent(this.stats.hunger), 26)
-
-    // this.hygineBar = this.add.graphics()
-    // this.hygineBar.fillStyle(conditionalColorBar(this.stats.hygine), 1)
-    // this.hygineBar.fillRect(390, 52, this.percentagePresent(this.stats.hygine), 26)
-
-    // this.funBar = this.add.graphics()
-    // this.funBar.fillStyle(conditionalColorBar(this.stats.fun), 1)
-    // this.funBar.fillRect(640, 52, this.percentagePresent(this.stats.fun), 26)
-
-    // this.affectionBar = this.add.graphics()
-    // this.affectionBar.fillStyle(affectionBarColor(), 1)
-    // this.affectionBar.fillRect(890, 52, this.percentagePresent(this.stats.affection), 26)
-
-    // console.log(`hungerbar: ${this.hungerBar.fillRect}`)
-    // console.log(`hygineBar: ${this.hygineBar}`)
-    // console.log(`funBar: ${this.funBar}`)
-    // console.log(`affectionBar: ${this.affectionBar}`)
   }
 
   sick() {
     this.isSick = true
-    this.tamago.play('sick')
-    // this.stats.affection += -30
-    this.hospital.on('pointerdown', this.pickItem)
+    this.pet.play(`${this.currentStage}-sick`)
+    this.hospital.setInteractive()
 
     if (this.isSick) {
-      console.log('tamago is sick')
+      console.log(`${this.currentStage} is sick`)
     }
   }
 
   percentagePresent(stat) {
-    // if (stat >= this.maxStat) {
-    //   stat = 100
-    // }
-    // if (stat === this.stats.affection && stat >= this.affectionMaxStat) {
-    //   stat = 50
-    // }
+
     return stat * 2
+  }
+
+  animations(stage) {
+    const Animconfig = (prefix, start, end) => {
+      const animconfig = {
+        prefix: prefix,
+        suffix: '.png',
+        start: start,
+        end: end,
+        zeroPad: 2
+      }
+      return animconfig
+    }
+
+    const keys = [`${stage}-moving`, `${stage}-sick`, `${stage}-sleeping`, `${stage}-taking a shower`, `${stage}-playing`, `${stage}-eating`, `${stage}-being healthy`]
+
+    for (const key of keys) {
+      let config
+      let repeat
+
+      switch (key) {
+        case `${stage}-moving`:
+          config = Animconfig(stage, 0, 2)
+          repeat = -1
+          break
+
+        case `${stage}-sick`:
+          config = Animconfig(stage, 5, 6)
+          repeat = -1
+          break
+        case `${stage}-sleeping`:
+          config = Animconfig(stage, 11, 12)
+          repeat = -1
+          break
+
+        case `${stage}-taking a shower`:
+          config = Animconfig(stage, 9, 10)
+          repeat = 3
+          break
+
+        case `${stage}-playing`:
+          config = Animconfig(stage, 7, 8)
+          repeat = 3
+          break
+
+        case `${stage}-eating`:
+          config = Animconfig(stage, 3, 4)
+          repeat = 3
+          break
+
+        case `${stage}-being healthy`:
+          config = Animconfig(stage, 13, 14)
+          repeat = 3
+          break
+      }
+
+      let animation = this.anims.create({
+        key,
+        frameRate: 5,
+        repeat,
+        frames: this.anims.generateFrameNames('pets', config)
+      })
+    }
+
+  }
+
+  shutDownCheck() {
+    if (!this.uiBlocked) {
+      for (const button of this.buttons) {
+        button.on('pointerdown', this.pickItem)
+      }
+
+    }
+    console.log(`shutDownCheck: ${this.uiBlocked}`)
   }
 
   update() {

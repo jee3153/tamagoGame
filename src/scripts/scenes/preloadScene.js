@@ -2,68 +2,85 @@ export default class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: 'PreloadScene' })
   }
+  // init(data) {
+  //   // grown stage 
+  //   this.stage = data.stage
+
+  // }
 
   preload() {
-    // load spritesheet
-    this.load.spritesheet('tamago', 'assets/img/tamago-spritesheet.png', {
-      frameWidth: 60,
-      frameHeight: 60
-    })
+    // load atlas
+    this.load.atlas('pets', 'assets/img/sprites.png', 'assets/img/sprites.json')
+
+
+
+    // // // load spritesheet
+    // this.load.spritesheet('tamago', 'assets/img/tamago-spritesheet.png', {
+    //   frameWidth: 60,
+    //   frameHeight: 60
+    // })
+
+    // this.load.spritesheet('hanpen', 'assets/img/hanpen-spritesheet.png', {
+    //   frameWidth: 60,
+    //   frameHeight: 60
+    // })
+
 
   }
 
   create() {
+    // this.stage = 'tamago'
     // animations
-    this.anims.create({
-      key: 'moving',
-      frames: this.anims.generateFrameNames('tamago', { frames: [0, 1, 2] }),
-      frameRate: 5,
-      repeat: -1
-    })
+    // this.anims.create({
+    //   key: 'moving',
+    //   frames: this.anims.generateFrameNames(this.stage, { start: 0, end: 2 }),
+    //   frameRate: 5,
+    //   repeat: -1
+    // })
 
-    this.anims.create({
-      key: 'sick',
-      frames: this.anims.generateFrameNames('tamago', { frames: [5, 6] }),
-      frameRate: 5,
-      repeat: -1
-    })
+    // this.anims.create({
+    //   key: 'sick',
+    //   frames: this.anims.generateFrameNames(this.stage, { frames: [5, 6] }),
+    //   frameRate: 5,
+    //   repeat: -1
+    // })
 
-    this.anims.create({
-      key: 'sleeping',
-      frames: this.anims.generateFrameNames('tamago', { frames: [11, 12] }),
-      frameRate: 5,
-      repeat: -1
-    })
+    // this.anims.create({
+    //   key: 'sleeping',
+    //   frames: this.anims.generateFrameNames(this.stage, { frames: [11, 12] }),
+    //   frameRate: 5,
+    //   repeat: -1
+    // })
 
-    this.anims.create({
-      key: 'taking a shower',
-      frames: this.anims.generateFrameNames('tamago', { frames: [9, 10] }),
-      frameRate: 5,
-      repeat: 3
-    })
+    // this.anims.create({
+    //   key: 'taking a shower',
+    //   frames: this.anims.generateFrameNames(this.stage, { frames: [9, 10] }),
+    //   frameRate: 5,
+    //   repeat: 3
+    // })
 
-    this.anims.create({
-      key: 'being healthy',
-      frames: this.anims.generateFrameNames('tamago', { frames: [13, 14] }),
-      frameRate: 5,
-      repeat: 3
-    })
+    // this.anims.create({
+    //   key: 'being healthy',
+    //   frames: this.anims.generateFrameNames(this.stage, { frames: [13, 14] }),
+    //   frameRate: 5,
+    //   repeat: 3
+    // })
 
-    this.anims.create({
-      key: 'playing',
-      frames: this.anims.generateFrameNames('tamago', { frames: [7, 8] }),
-      frameRate: 5,
-      repeat: 3
-    })
+    // this.anims.create({
+    //   key: 'playing',
+    //   frames: this.anims.generateFrameNames(this.stage, { frames: [7, 8] }),
+    //   frameRate: 5,
+    //   repeat: 3
+    // })
 
-    this.anims.create({
-      key: 'eating',
-      frames: this.anims.generateFrameNames('tamago', { frames: [3, 4] }),
-      frameRate: 5,
-      repeat: 3
-    })
-
+    // this.anims.create({
+    //   key: 'eating',
+    //   frames: this.anims.generateFrameNames(this.stage, { frames: [3, 4] }),
+    //   frameRate: 5,
+    //   repeat: 3
+    // })
     this.scene.start('MainScene')
+    // this.scene.start('MainScene', { stage: this.stage })
 
 
     /**
