@@ -26,7 +26,7 @@ export default class MainScene extends Phaser.Scene {
       snack: { hunger: 10, fun: 10 },
       play: { fun: 20 },
       shower: { hygine: 100, health: 5 },
-      hostpital: { health: 50 }
+      hospital: { health: 50 }
     }
 
     // initialise currentstage
@@ -44,10 +44,6 @@ export default class MainScene extends Phaser.Scene {
       affection: -2,
       health: -2
     }
-
-    // sickness condition 
-    // this.isSick = this.stats.health <= 20
-    // console.log(this.isSick)
   }
 
   preload() {
@@ -72,7 +68,6 @@ export default class MainScene extends Phaser.Scene {
 
     this.pet = this.add.sprite(canvasWidth / 2, canvasHeight / 2, 'pets', `assets/img/${this.currentStage}00.png`).setScale(2).setInteractive()
     this.pet.play(`${this.currentStage}-moving`)
-    console.log(this.pet)
 
     this.statbarMaker()
     this.refreshHUD()
@@ -100,11 +95,11 @@ export default class MainScene extends Phaser.Scene {
 
     // growing to toddler
     this.toToddler = this.time.addEvent({
-      delay: 3000,
+      delay: 300000, // 3mins late it becomes toddler
       repeat: 0,
       callback: () => {
         this.currentStage = this.stage.toddler
-        this.pet.setFrame('hanpen00.png')
+        this.pet.setFrame(`${this.currentStage}00.png`)
         this.pet.play(`${this.currentStage}-moving`)
 
         console.log('tamago grown to hanpen!')
@@ -112,18 +107,16 @@ export default class MainScene extends Phaser.Scene {
       callbackScope: this
     })
 
-
-    console.log(`global ${this.pet}`)
-
     // on Animation completion
     this.pet.on('animationcomplete', () => {
       this.backToDefault()
       console.log('animation completed!')
-      // this.shutDownCheck()
 
       // ui ready for next animation
       this.uiReady()
-      console.log(this.currentStage)
+      // ui unblock
+      this.UIunblock()
+
     }, this)
 
   }
@@ -133,26 +126,20 @@ export default class MainScene extends Phaser.Scene {
 
     // add icons on interface
     this.shower = this.add.sprite((screenW - margin) / 6, screenH, 'shower')
-      .setScale(1.5).setInteractive()
     this.shower.customStats = this.statRate.shower
 
     this.feed = this.add.sprite((screenW - margin) / 6 * 2, screenH, 'feed')
-      .setScale(1.5).setInteractive()
     this.feed.customStats = this.statRate.feed
 
     this.snack = this.add.sprite((screenW - margin) / 6 * 3, screenH, 'snack')
-      .setScale(1.5).setInteractive()
     this.snack.customStats = this.statRate.snack
 
     this.play = this.add.sprite((screenW - margin) / 6 * 4, screenH, 'play')
-      .setScale(1.5).setInteractive()
     this.play.customStats = this.statRate.play
 
     this.sleep = this.add.sprite((screenW - margin) / 6 * 5, screenH, 'sleep')
-      .setScale(1.5).setInteractive()
 
     this.hospital = this.add.sprite((screenW - margin), screenH, 'hospital')
-      .setScale(1.5).setInteractive()
     this.hospital.customStats = this.statRate.hospital
 
 
@@ -162,31 +149,35 @@ export default class MainScene extends Phaser.Scene {
     // all icons in an array
     this.buttons = [this.shower, this.feed, this.snack, this.play, this.sleep, this.hospital]
 
+
+
     // ui unblock
     this.uiBlocked = false
+    // attatch pick events on buttons
+    this.ButtonEvents(this.pickItem)
 
     // if tamago is sick 
     this.isSick = false
 
-    this.shutDownCheck()
-
     // refresh ui
     this.uiReady()
+
+
   }
 
   pickItem() {
+    const stage = this.scene.currentStage
+
     // if ui is blocked cannot pick item
     if (this.scene.uiBlocked) return
 
-    // make sure the ui is ready
-    this.scene.uiReady()
+    // // make sure the ui is ready
+    // this.scene.uiReady()
 
     // select item
     this.scene.selectedItem = this
 
     this.scene.uiBlocked = true
-
-    const stage = this.scene.currentStage
 
     // adding stats up
     this.scene.updateStat(this.customStats)
@@ -195,25 +186,30 @@ export default class MainScene extends Phaser.Scene {
     switch (this.texture.key) {
       case 'shower':
         this.scene.pet.play(`${stage}-taking a shower`)
+        this.scene.UIblock()
         break
 
       case 'feed':
       case 'snack':
         this.scene.pet.play(`${stage}-eating`)
+        this.scene.UIblock()
         break
 
       case 'play':
         this.scene.pet.play(`${stage}-playing`)
+        this.scene.UIblock()
         break
 
       case 'sleep':
         this.scene.pet.play(`${stage}-sleeping`)
+        this.scene.UIblock()
         break
 
       case 'hospital':
         this.isSick = false
         this.scene.pet.play(`${stage}-being healthy`)
         this.disableInteractive()
+        this.scene.UIblock()
         break
     }
 
@@ -228,7 +224,6 @@ export default class MainScene extends Phaser.Scene {
     } else {
       // back to default movement
       this.pet.play(`${this.currentStage}-moving`)
-      console.log('back to default: current stage is' + this.currentStage)
     }
   }
 
@@ -246,7 +241,7 @@ export default class MainScene extends Phaser.Scene {
         // stats can't be less than zero
         if (this.stats[stat] < 0) {
           isGameOver = true
-          this.stats[stat] = 0
+          this.stats[stat] = 1
         }
       }
 
@@ -257,7 +252,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // refresh HUD
-    console.log(`updated stat`)
+    // console.log(`updated stat`)
     this.refreshHUD()
     // this.backToDefault()
     // if (isGameOver) this.gameOver()
@@ -282,68 +277,59 @@ export default class MainScene extends Phaser.Scene {
       fill: '#000'
     }
 
-    this.hungerText = this.add.text(200, 90, 'Hunger', textConfig)
-    this.hygineText = this.add.text(450, 90, 'Hygine', textConfig)
-    this.funText = this.add.text(720, 90, 'Fun', textConfig)
-    this.affectionText = this.add.text(930, 90, 'Affection', textConfig)
+    const barInitialising = (barName, strockX) => {
+      barName = this.add.graphics()
+      barName.lineStyle(3, 0x000000, 1)
+      barName.strokeRect(strockX, margin, bar.width, bar.height)
+
+    }
 
     const bar = {
       width: 206,
       height: 30
     }
 
-    this.hungerBar = this.add.graphics()
-    this.hungerBar.lineStyle(3, 0x000000, 1)
-    this.hungerBar.strokeRect(138, margin, bar.width, bar.height)
+    this.hungerText = this.add.text(200, 90, 'Hunger', textConfig)
+    this.hygineText = this.add.text(450, 90, 'Hygine', textConfig)
+    this.funText = this.add.text(720, 90, 'Fun', textConfig)
+    this.affectionText = this.add.text(930, 90, 'Affection', textConfig)
+
     this.hungerBar = this.add.rectangle(140, 52, this.percentagePresent(this.stats.hunger), 26, 0xFF2D00)
-
-    this.hygineBar = this.add.graphics()
-    this.hygineBar.lineStyle(3, 0x000000, 1)
-    this.hygineBar.strokeRect(388, margin, bar.width, bar.height)
     this.hygineBar = this.add.rectangle(390, 52, this.percentagePresent(this.stats.hygine), 26, 0xFF2D00)
-
-    this.funBar = this.add.graphics()
-    this.funBar.lineStyle(3, 0x000000, 1)
-    this.funBar.strokeRect(638, margin, bar.width, bar.height)
     this.funBar = this.add.rectangle(640, 52, this.percentagePresent(this.stats.fun), 26, 0xFF2D00)
-
-    this.affectionBar = this.add.graphics()
-    this.affectionBar.lineStyle(3, 0x000000, 1)
-    this.affectionBar.strokeRect(888, margin, bar.width, bar.height)
     this.affectionBar = this.add.rectangle(890, 52, this.percentagePresent(this.stats.affection), 26, 0xeb3458)
+
+    barInitialising(this.hungerBar, 138)
+    barInitialising(this.hygineBar, 388)
+    barInitialising(this.funBar, 638)
+    barInitialising(this.affectionBar, 888)
   }
 
   refreshHUD() {
     const greenOrRed = (stat) => stat >= 40 ? 65280 : 16723200
     const pink = this.stats.affection <= 50 ? 16361168 : 15414360
 
-    this.hungerBar.setOrigin(0, 0)
-    this.hungerBar.displayWidth = this.percentagePresent(this.stats.hunger)
-    this.hungerBar.fillColor = greenOrRed(this.stats.hunger)
+    // this.statBars = [this.hungerBar, this.hygineBar, this.funBar, this.affectionBar]
 
-    this.hygineBar.setOrigin(0, 0)
-    this.hygineBar.displayWidth = this.percentagePresent(this.stats.hygine)
-    this.hygineBar.fillColor = greenOrRed(this.stats.hygine)
+    const fillingBar = (barName, stat) => {
+      barName.setOrigin(0, 0)
+      barName.displayWidth = this.percentagePresent(stat)
+      barName === this.affectionBar ? barName.fillColor = pink : barName.fillColor = greenOrRed(stat)
+    }
 
-    this.funBar.setOrigin(0, 0)
-    this.funBar.displayWidth = this.percentagePresent(this.stats.fun)
-    this.funBar.fillColor = greenOrRed(this.stats.fun)
-
-    this.affectionBar.setOrigin(0, 0)
-    this.affectionBar.displayWidth = this.percentagePresent(this.stats.affection)
-    this.affectionBar.fillColor = pink
-
-
+    fillingBar(this.hungerBar, this.stats.hunger)
+    fillingBar(this.hygineBar, this.stats.hygine)
+    fillingBar(this.funBar, this.stats.fun)
+    fillingBar(this.affectionBar, this.stats.affection, pink)
   }
 
   sick() {
     this.isSick = true
     this.pet.play(`${this.currentStage}-sick`)
     this.hospital.setInteractive()
+    this.UIblock()
 
-    if (this.isSick) {
-      console.log(`${this.currentStage} is sick`)
-    }
+    console.log(`${this.currentStage} is sick`)
   }
 
   percentagePresent(stat) {
@@ -415,14 +401,27 @@ export default class MainScene extends Phaser.Scene {
 
   }
 
-  shutDownCheck() {
-    if (!this.uiBlocked) {
-      for (const button of this.buttons) {
-        button.on('pointerdown', this.pickItem)
-      }
-
+  UIblock() {
+    for (const button of this.buttons) {
+      // shut down all icons except hospital
+      if (button === this.hospital) continue
+      button.disableInteractive()
     }
-    console.log(`shutDownCheck: ${this.uiBlocked}`)
+  }
+
+  UIunblock() {
+    for (const button of this.buttons) {
+      // turn on all icons except hospital
+      if (button === this.hospital) continue
+      button.setInteractive()
+    }
+  }
+
+  ButtonEvents(eventfn) {
+    for (const button of this.buttons) {
+      button.setScale(1.5).setInteractive()
+      button.on('pointerdown', eventfn)
+    }
   }
 
   update() {

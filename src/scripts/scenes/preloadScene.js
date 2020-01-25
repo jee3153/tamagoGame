@@ -12,20 +12,6 @@ export default class PreloadScene extends Phaser.Scene {
     // load atlas
     this.load.atlas('pets', 'assets/img/sprites.png', 'assets/img/sprites.json')
 
-
-
-    // // // load spritesheet
-    // this.load.spritesheet('tamago', 'assets/img/tamago-spritesheet.png', {
-    //   frameWidth: 60,
-    //   frameHeight: 60
-    // })
-
-    // this.load.spritesheet('hanpen', 'assets/img/hanpen-spritesheet.png', {
-    //   frameWidth: 60,
-    //   frameHeight: 60
-    // })
-
-
   }
 
   create() {
