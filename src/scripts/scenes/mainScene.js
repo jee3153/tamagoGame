@@ -13,11 +13,11 @@ export default class MainScene extends Phaser.Scene {
 
     // stats
     this.stats = {
-      hunger: 70,
-      fun: 70,
-      hygine: 70,
+      hunger: 60,
+      fun: 60,
+      hygine: 60,
       affection: 1,
-      health: 50
+      health: 60
     }
 
     // stat rate
@@ -25,8 +25,8 @@ export default class MainScene extends Phaser.Scene {
       feed: { hunger: 20, health: 5 },
       snack: { hunger: 10, fun: 10 },
       play: { fun: 20 },
-      shower: { hygine: 100, health: 5 },
-      hospital: { health: 50 }
+      shower: { hygine: 100, health: 2 },
+      hospital: { health: 60 }
     }
 
     // initialise currentstage
@@ -39,11 +39,15 @@ export default class MainScene extends Phaser.Scene {
     // decay parameters
     this.decayRates = {
       hunger: -5,
-      fun: -5,
-      hygine: -5,
+      fun: -4,
+      hygine: -7,
       affection: -2,
-      health: -2
+      health: -3
     }
+
+    // initialise if it's gameover
+    this.isGameOver = false
+
   }
 
   preload() {
@@ -57,16 +61,18 @@ export default class MainScene extends Phaser.Scene {
     this.load.image('sleep', 'assets/img/sleep.png')
     this.load.image('play', 'assets/img/play.png')
 
-    // load animation
-    this.animations('tamago')
-    this.animations('hanpen')
+    // load background
+    this.load.image('bg', 'assets/img/bg.png')
   }
 
   create() {
     const canvasWidth = this.game.canvas.width
     const canvasHeight = this.game.canvas.height
 
+    console.log(`width:${canvasWidth} height: ${canvasHeight}`)
+
     this.pet = this.add.sprite(canvasWidth / 2, canvasHeight / 2, 'pets', `assets/img/${this.currentStage}00.png`).setScale(2).setInteractive()
+    this.pet.depth = 2
     this.pet.play(`${this.currentStage}-moving`)
 
     this.statbarMaker()
@@ -78,15 +84,14 @@ export default class MainScene extends Phaser.Scene {
       delay: 1000,
       repeat: -1,
       callback: () => {
-        if (this.selectedItem === this.sleep) {
+        // if sleep is selected no stat update
+        if (this.selectedItem === this.sleep || this.isGameOver) {
           return
         } else {
           // update stats
           this.updateStat(this.decayRates)
-
-          if (this.stats.health <= 20) {
-            this.sick()
-          }
+          // decide which animation to play depending on updated stat
+          this.backToDefault()
         }
 
       },
@@ -109,13 +114,23 @@ export default class MainScene extends Phaser.Scene {
 
     // on Animation completion
     this.pet.on('animationcomplete', () => {
+      // check if game is over
+      if (this.isGameOver) return
+
       this.backToDefault()
       console.log('animation completed!')
 
       // ui ready for next animation
       this.uiReady()
+
       // ui unblock
       this.UIunblock()
+
+      //ui buttons transparency
+      for (const button of this.buttons) {
+        if (button === this.hospital) continue
+        button.alpha = 1
+      }
 
     }, this)
 
@@ -142,23 +157,17 @@ export default class MainScene extends Phaser.Scene {
     this.hospital = this.add.sprite((screenW - margin), screenH, 'hospital')
     this.hospital.customStats = this.statRate.hospital
 
-
-    //disable hospital interaction initially
-    this.hospital.disableInteractive()
-
     // all icons in an array
     this.buttons = [this.shower, this.feed, this.snack, this.play, this.sleep, this.hospital]
-
-
 
     // ui unblock
     this.uiBlocked = false
     // attatch pick events on buttons
     this.ButtonEvents(this.pickItem)
 
-    // if tamago is sick 
-    this.isSick = false
-
+    //disable hospital interaction initially
+    this.hospital.disableInteractive()
+    this.hospital.alpha = 0.5
     // refresh ui
     this.uiReady()
 
@@ -202,13 +211,14 @@ export default class MainScene extends Phaser.Scene {
 
       case 'sleep':
         this.scene.pet.play(`${stage}-sleeping`)
-        this.scene.UIblock()
+        // this.scene.UIblock()
         break
 
       case 'hospital':
         this.isSick = false
         this.scene.pet.play(`${stage}-being healthy`)
         this.disableInteractive()
+        this.alpha = 0.5
         this.scene.UIblock()
         break
     }
@@ -217,10 +227,15 @@ export default class MainScene extends Phaser.Scene {
   }
 
   backToDefault() {
-    // check if tamago can back to default healty state 
-    if (this.stats.health <= 20) {
-      this.sick()
 
+
+    // check if tamago can back to default healthy state 
+    if (this.isSick) {
+      this.sick()
+      console.log(`tamago is sisk: ${this.isSick}`)
+      if (this.isGameOver) {
+        this.gameOver()
+      }
     } else {
       // back to default movement
       this.pet.play(`${this.currentStage}-moving`)
@@ -228,8 +243,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   updateStat(statDifference) {
-
-    let isGameOver = false
+    // only stat check or update, not triggering ANIMATION CONTAINED fn
 
     for (const stat in statDifference) {
       if (statDifference.hasOwnProperty(stat)) {
@@ -239,23 +253,38 @@ export default class MainScene extends Phaser.Scene {
         this.stats[stat] >= this.maxStat ? this.stats[stat] = this.maxStat : null
 
         // stats can't be less than zero
-        if (this.stats[stat] < 0) {
-          isGameOver = true
+        if (this.stats[stat] < 1) {
           this.stats[stat] = 1
+
+          // dead condition defined
+          if (this.stats[stat] === this.stats.health && this.stats[stat] <= 5) {
+            this.isGameOver = true
+          } else {
+            this.isGameOver = false
+          }
         }
       }
 
       this.checkForAffection(this.stats)
-      this.stats.affection >= this.affectionMaxStat ? this.stats.affection = this.affectionMaxStat : null
 
+      // set max affection stat depending on the pet's stage
+      this.stats.affection >= this.affectionMaxStat ? this.stats.affection = this.affectionMaxStat : null
 
     }
 
+
+    // sick condition defined
+    if (this.stats.health <= 20) {
+      this.isSick = true
+      // console.log('sick() should trigger now')
+    } else {
+      this.isSick = false
+    }
+
+    console.log(`health: ${this.stats.health}`)
+
     // refresh HUD
-    // console.log(`updated stat`)
     this.refreshHUD()
-    // this.backToDefault()
-    // if (isGameOver) this.gameOver()
   }
 
   checkForAffection(stat) {
@@ -263,9 +292,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   uiReady() {
-    // initialize selected item
-    // this.selectedItem = null
-
     // scene unblocked
     this.uiBlocked = false
   }
@@ -303,6 +329,10 @@ export default class MainScene extends Phaser.Scene {
     barInitialising(this.hygineBar, 388)
     barInitialising(this.funBar, 638)
     barInitialising(this.affectionBar, 888)
+
+    this.statTexts = [this.hungerText, this.hygineText, this.funText, this.affectionText]
+
+    this.bars = [this.hungerBar, this.hygineBar, this.funBar, this.affectionBar]
   }
 
   refreshHUD() {
@@ -324,12 +354,10 @@ export default class MainScene extends Phaser.Scene {
   }
 
   sick() {
-    this.isSick = true
     this.pet.play(`${this.currentStage}-sick`)
     this.hospital.setInteractive()
+    this.hospital.alpha = 1
     this.UIblock()
-
-    console.log(`${this.currentStage} is sick`)
   }
 
   percentagePresent(stat) {
@@ -337,91 +365,103 @@ export default class MainScene extends Phaser.Scene {
     return stat * 2
   }
 
-  animations(stage) {
-    const Animconfig = (prefix, start, end) => {
-      const animconfig = {
-        prefix: prefix,
-        suffix: '.png',
-        start: start,
-        end: end,
-        zeroPad: 2
-      }
-      return animconfig
-    }
-
-    const keys = [`${stage}-moving`, `${stage}-sick`, `${stage}-sleeping`, `${stage}-taking a shower`, `${stage}-playing`, `${stage}-eating`, `${stage}-being healthy`]
-
-    for (const key of keys) {
-      let config
-      let repeat
-
-      switch (key) {
-        case `${stage}-moving`:
-          config = Animconfig(stage, 0, 2)
-          repeat = -1
-          break
-
-        case `${stage}-sick`:
-          config = Animconfig(stage, 5, 6)
-          repeat = -1
-          break
-        case `${stage}-sleeping`:
-          config = Animconfig(stage, 11, 12)
-          repeat = -1
-          break
-
-        case `${stage}-taking a shower`:
-          config = Animconfig(stage, 9, 10)
-          repeat = 3
-          break
-
-        case `${stage}-playing`:
-          config = Animconfig(stage, 7, 8)
-          repeat = 3
-          break
-
-        case `${stage}-eating`:
-          config = Animconfig(stage, 3, 4)
-          repeat = 3
-          break
-
-        case `${stage}-being healthy`:
-          config = Animconfig(stage, 13, 14)
-          repeat = 3
-          break
-      }
-
-      let animation = this.anims.create({
-        key,
-        frameRate: 5,
-        repeat,
-        frames: this.anims.generateFrameNames('pets', config)
-      })
-    }
-
-  }
-
   UIblock() {
+    this.isBlocked = true
     for (const button of this.buttons) {
       // shut down all icons except hospital
       if (button === this.hospital) continue
       button.disableInteractive()
+      button.alpha = 0.5
     }
+
+
   }
 
   UIunblock() {
+    this.isBlocked = false
     for (const button of this.buttons) {
       // turn on all icons except hospital
       if (button === this.hospital) continue
       button.setInteractive()
     }
+
   }
+
+  // buttonTransparency() {
+  //   for (const button of this.buttons) {
+  //     if (this.isBlocked) {
+  //       button.alpha = 0.5
+  //     } else {
+  //       button.alpha = 1
+  //     }
+  //   }
+  // }
 
   ButtonEvents(eventfn) {
     for (const button of this.buttons) {
       button.setScale(1.5).setInteractive()
       button.on('pointerdown', eventfn)
     }
+  }
+
+  gameOver() {
+    const gameW = this.game.canvas.width
+    const gameH = this.game.canvas.height
+
+    let bg = this.add.sprite(0, 0, 'bg').setOrigin(0, 0).setInteractive()
+
+
+    let textConfig = (size, font, colorCode) => {
+      let config = {
+        font: `${size}px ${font}`,
+        fill: colorCode
+      }
+      return config
+    }
+
+    let restartTrigger = () => {
+      bg.on('pointerdown', () => {
+        this.scene.start('MainScene')
+      }, this)
+    }
+
+    let textNotice = this.add.text(gameW / 2, -50, 'YOUR TAMAGO IS DEAD...', textConfig(40, 'sans-serif', '#000'))
+    let textRestart = this.add.text(gameW / 2, gameH + 50, 'CLICK TO RESTART', textConfig(30, 'sans-serif', '#000'))
+    console.log('game over')
+
+    textNotice.setOrigin(0.5, 0)
+    textRestart.setOrigin(0.5, 0)
+
+    bg.depth = 1
+    textNotice.depth = 2
+    textRestart.depth = 2
+
+    this.uiBlocked = true
+    this.UIblock()
+    this.pet.setFrame('death00.png')
+    this.pet.play('dying')
+
+    // tween to replay
+    this.timeline = this.tweens.createTimeline()
+
+    this.timelineAdd(this.pet, -50, null, 1300)
+    this.timelineAdd(textNotice, gameH / 2 - 200)
+    this.timelineAdd(textRestart, gameH / 2 + 200, restartTrigger)
+
+    this.timeline.play()
+
+  }
+
+  timelineAdd(targets, y, onComplete, duration = 500) {
+    let timeline = this.timeline.add({
+      targets,
+      y,
+      ease: 'linear',
+      duration,
+      onComplete
+    })
+
+    return timeline
   }
 
   update() {
