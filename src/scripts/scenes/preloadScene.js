@@ -66,6 +66,9 @@ export default class PreloadScene extends Phaser.Scene {
     // load animations 
     this.animations('tamago')
     this.animations('hanpen')
+    this.animations('meatboya')
+    this.animations('chikuwa')
+    this.animations('chikuwakun')
 
 
     this.timeline = this.tweens.createTimeline()

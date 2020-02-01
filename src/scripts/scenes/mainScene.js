@@ -8,7 +8,8 @@ export default class MainScene extends Phaser.Scene {
     // grown stage 
     this.stage = {
       baby: 'tamago',
-      toddler: 'hanpen'
+      toddler: ['hanpen', 'meatboya'],
+      teenage: ['chikuwa', 'chikuwakun']
     }
 
     // stats
@@ -69,9 +70,7 @@ export default class MainScene extends Phaser.Scene {
     const canvasWidth = this.game.canvas.width
     const canvasHeight = this.game.canvas.height
 
-    console.log(`width:${canvasWidth} height: ${canvasHeight}`)
-
-    this.pet = this.add.sprite(canvasWidth / 2, canvasHeight / 2, 'pets', `assets/img/${this.currentStage}00.png`).setScale(2).setInteractive()
+    this.pet = this.add.sprite(canvasWidth / 2, canvasHeight / 2, 'pets', `assets/img/${this.currentStage}00.png`).setScale(3).setInteractive()
     this.pet.depth = 2
     this.pet.play(`${this.currentStage}-moving`)
 
@@ -81,7 +80,7 @@ export default class MainScene extends Phaser.Scene {
 
     // decay of stats over time
     this.timedEventStats = this.time.addEvent({
-      delay: 1000,
+      delay: 5000,
       repeat: -1,
       callback: () => {
         // if sleep is selected no stat update
@@ -100,17 +99,42 @@ export default class MainScene extends Phaser.Scene {
 
     // growing to toddler
     this.toToddler = this.time.addEvent({
-      delay: 300000, // 3mins late it becomes toddler
+      delay: 30000, // 30 seconds later it becomes toddler
       repeat: 0,
       callback: () => {
-        this.currentStage = this.stage.toddler
+        if (this.stats.affection >= 30) {
+          this.currentStage = this.stage.toddler[0]
+        } else {
+          this.currentStage = this.stage.toddler[1]
+        }
+
         this.pet.setFrame(`${this.currentStage}00.png`)
         this.pet.play(`${this.currentStage}-moving`)
 
-        console.log('tamago grown to hanpen!')
+        console.log(`tamago grown to ${this.currentStage}!`)
       },
       callbackScope: this
     })
+
+    // growing to teenage
+    this.toTeenage = this.time.addEvent({
+      delay: 50000, // 50 seconds later it becomes teenage
+      repeat: 0,
+      callback: () => {
+        if (this.stats.affection >= 80) {
+          this.currentStage = this.stage.teenage[0]
+        } else {
+          this.currentStage = this.stage.teenage[1]
+        }
+
+        this.pet.setFrame(`${this.currentStage}00.png`)
+        this.pet.play(`${this.currentStage}-moving`)
+
+        console.log(console.log(`tamago grown to ${this.currentStage}!`))
+      },
+      callbackScope: this
+    })
+
 
     // on Animation completion
     this.pet.on('animationcomplete', () => {
@@ -118,7 +142,6 @@ export default class MainScene extends Phaser.Scene {
       if (this.isGameOver) return
 
       this.backToDefault()
-      console.log('animation completed!')
 
       // ui ready for next animation
       this.uiReady()
@@ -174,14 +197,15 @@ export default class MainScene extends Phaser.Scene {
 
   }
 
+  timeCounting() {
+
+  }
+
   pickItem() {
     const stage = this.scene.currentStage
 
     // if ui is blocked cannot pick item
     if (this.scene.uiBlocked) return
-
-    // // make sure the ui is ready
-    // this.scene.uiReady()
 
     // select item
     this.scene.selectedItem = this
@@ -190,7 +214,6 @@ export default class MainScene extends Phaser.Scene {
 
     // adding stats up
     this.scene.updateStat(this.customStats)
-    console.log(this.scene.stats)
 
     switch (this.texture.key) {
       case 'shower':
@@ -223,7 +246,6 @@ export default class MainScene extends Phaser.Scene {
         break
     }
 
-    console.log(`picking ${this.texture.key}`)
   }
 
   backToDefault() {
@@ -232,7 +254,6 @@ export default class MainScene extends Phaser.Scene {
     // check if tamago can back to default healthy state 
     if (this.isSick) {
       this.sick()
-      console.log(`tamago is sisk: ${this.isSick}`)
       if (this.isGameOver) {
         this.gameOver()
       }
@@ -281,14 +302,12 @@ export default class MainScene extends Phaser.Scene {
       this.isSick = false
     }
 
-    console.log(`health: ${this.stats.health}`)
-
     // refresh HUD
     this.refreshHUD()
   }
 
   checkForAffection(stat) {
-    stat.hunger >= 70 && stat.hygine >= 70 && stat.fun ? stat.affection += 10 : stat.affection += 0
+    stat.hunger >= 80 && stat.hygine >= 80 && stat.fun >= 70 ? stat.affection += 2 : stat.affection += 0
   }
 
   uiReady() {
@@ -387,16 +406,6 @@ export default class MainScene extends Phaser.Scene {
 
   }
 
-  // buttonTransparency() {
-  //   for (const button of this.buttons) {
-  //     if (this.isBlocked) {
-  //       button.alpha = 0.5
-  //     } else {
-  //       button.alpha = 1
-  //     }
-  //   }
-  // }
-
   ButtonEvents(eventfn) {
     for (const button of this.buttons) {
       button.setScale(1.5).setInteractive()
@@ -427,7 +436,6 @@ export default class MainScene extends Phaser.Scene {
 
     let textNotice = this.add.text(gameW / 2, -50, 'YOUR TAMAGO IS DEAD...', textConfig(40, 'sans-serif', '#000'))
     let textRestart = this.add.text(gameW / 2, gameH + 50, 'CLICK TO RESTART', textConfig(30, 'sans-serif', '#000'))
-    console.log('game over')
 
     textNotice.setOrigin(0.5, 0)
     textRestart.setOrigin(0.5, 0)
